@@ -2,7 +2,8 @@ import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
 
 export type ChainStep = {
 	name: string;
-	prompt: string;
+	instructions_file?: string;
+	instructions?: string;
 	model: string;
 	model_provider: string;
 	thinking?: ThinkingLevel;
