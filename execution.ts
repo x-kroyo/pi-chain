@@ -23,7 +23,7 @@ export async function executeStep(
 	step: ChainStep,
 	ctx: ExtensionCommandContext,
 ): Promise<void> {
-	const { prompt, missingSkills } = buildStepPrompt(step, ctx);
+	const { prompt, missingSkills } = buildStepPrompt(chain, step, ctx);
 	if (missingSkills.length > 0) {
 		ctx.ui.notify(`Missing skills for step '${step.name}': ${missingSkills.join(", ")}`, "warning");
 	}
