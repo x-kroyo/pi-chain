@@ -23,12 +23,31 @@ function resolveStepInstructions(step: ChainStep, cwd: string): string {
 	throw new Error("Step must define at least one instruction source: 'instructions_file' or 'instructions'");
 }
 
+function resolveReadPath(readPath: string, cwd: string): string {
+	return path.isAbsolute(readPath) ? readPath : path.join(cwd, readPath);
+}
+
+function readContextSnippet(readPath: string, cwd: string): string {
+	const resolvedPath = resolveReadPath(readPath, cwd);
+	try {
+		const raw = fs.readFileSync(resolvedPath, "utf-8");
+		const trimmed = raw.trim();
+		if (!trimmed) {
+			return `<read path="${readPath}" resolved="${resolvedPath}">\n[empty file]\n</read>`;
+		}
+		return `<read path="${readPath}" resolved="${resolvedPath}">\n${trimmed}\n</read>`;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return `<read path="${readPath}" resolved="${resolvedPath}">\n[unavailable: ${message}]\n</read>`;
+	}
+}
+
 export function buildStepPrompt(
 	chain: ChainDefinition,
 	step: ChainStep,
 	ctx: ExtensionContext,
 ): BuiltStepPrompt {
-	const stepReadLines = (step.reads ?? []).map((readPath) => `- ${readPath}`);
+	const inlinedReads = (step.reads ?? []).map((readPath) => readContextSnippet(readPath, ctx.cwd));
 	const chainDirectory = getChainDirectory(chain.id, ctx.cwd);
 	const resolvedInstructions = resolveStepInstructions(step, chainDirectory);
 	const { resolved: resolvedSkills, missing: missingSkills } = resolveStepSkills(step.skills ?? [], ctx.cwd);
@@ -37,7 +56,7 @@ export function buildStepPrompt(
 		((injection) => (injection ? `Resolved skill content:\n${injection}` : undefined))(
 			buildSkillInjection(resolvedSkills),
 		),
-		stepReadLines.length > 0 ? `Read these files or paths before answering:\n${stepReadLines.join("\n")}` : undefined,
+		inlinedReads.length > 0 ? `Additional read context:\n${inlinedReads.join("\n\n")}` : undefined,
 		`Project cwd: ${ctx.cwd}`,
 		`Step instructions:\n${resolvedInstructions}`
 	]
